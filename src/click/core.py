@@ -3402,13 +3402,32 @@ class Option(Parameter):
         return value
 
     def get_error_hint(self, ctx: Context | None) -> str:
+        """Get a stringified version of the param for use in error messages.
+
+        .. versionchanged:: 8.6.0
+            Displays resolved ``auto_envvar_prefix`` when ``show_envvar`` is true.
+        """
         result = super().get_error_hint(ctx)
-        if self.show_envvar and self.envvar:
-            envvars = [self.envvar] if isinstance(self.envvar, str) else self.envvar
-            # An environment variable is allowed to feature a space or a comma on all
-            # platforms, hence the quotes around each.
-            var_str = ", ".join(f"'{var}'" for var in envvars)
-            result += f" (env var: {var_str})"
+        if self.show_envvar:
+            envvar = self.envvar
+
+            if not envvar and (
+                self.allow_from_autoenv
+                and ctx is not None
+                and ctx.auto_envvar_prefix is not None
+                and self.name
+            ):
+                envvar = f"{ctx.auto_envvar_prefix}_{self.name.upper()}"
+
+            if envvar:
+                if isinstance(envvar, str):
+                    envvars = [envvar]
+                else:
+                    envvars = envvar
+                # An environment variable is allowed to feature a space or a comma
+                # on all platforms, hence the quotes around each.
+                var_str = ", ".join(f"'{var}'" for var in envvars)
+                result += f" (env var: {var_str})"
         return result
 
     def _check_name_is_normalized(self, name: str, decls: cabc.Sequence[str]) -> None:
